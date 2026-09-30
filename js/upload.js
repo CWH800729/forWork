@@ -18,9 +18,7 @@ const controls = {
 init();
 
 function init() {
-  const { floors, areas, trades, categories } = window.APP_CONFIG.options;
-  fillSelect(controls.floor, floors);
-  fillSelect(controls.area, areas);
+  const { trades, categories } = window.APP_CONFIG.options;
   fillSelect(controls.trade, trades);
   fillSelect(controls.category, categories);
 
@@ -30,26 +28,32 @@ function init() {
   updatePreview();
 
   ["floor", "area", "trade", "category"].forEach((key) => {
-    controls[key].addEventListener("change", saveDefaults);
+    const eventName = key === "floor" || key === "area" ? "input" : "change";
+    controls[key].addEventListener(eventName, saveDefaults);
   });
 }
 
 function applyQueryDefaults() {
   const params = new URLSearchParams(location.search);
   ["floor", "area", "trade", "category"].forEach((key) => {
-    const value = params.get(key);
-    if (value && [...controls[key].options].some((option) => option.value === value)) {
-      controls[key].value = value;
+    let value = params.get(key);
+    if (!value) return;
+    if (key === "floor") value = value.replace(/F$/i, "");
+    if (key === "trade" || key === "category") {
+      if (![...controls[key].options].some((option) => option.value === value)) return;
     }
+    controls[key].value = value;
   });
 }
 
 function restoreDefaults() {
   const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
   Object.entries(saved).forEach(([key, value]) => {
-    if (controls[key] && [...controls[key].options].some((option) => option.value === value)) {
-      controls[key].value = value;
+    if (!controls[key]) return;
+    if (key === "trade" || key === "category") {
+      if (![...controls[key].options].some((option) => option.value === value)) return;
     }
+    controls[key].value = value;
   });
 }
 
@@ -71,7 +75,7 @@ clearButton.addEventListener("click", () => {
 function updatePreview() {
   previewGrid.innerHTML = "";
   const files = [...photoInput.files];
-  selectedCount.textContent = files.length ? `已選擇 ${files.length} 張` : "尚未選擇照片";
+  selectedCount.textContent = files.length ? "已選擇 " + files.length + " 張" : "尚未選擇照片";
 
   files.forEach((file) => {
     const item = document.createElement("div");
@@ -95,46 +99,77 @@ form.addEventListener("submit", async (event) => {
 
   saveDefaults();
   uploadButton.disabled = true;
-  setMessage("照片上傳中，請稍候...", "");
+  setMessage("正在準備 " + files.length + " 張照片...", "");
 
+  let uploaded = 0;
   try {
-    const photos = await Promise.all(files.map(fileToPayload));
-    const payload = {
-      meta: {
-        date: controls.date.value,
-        floor: controls.floor.value,
-        area: controls.area.value,
-        trade: controls.trade.value,
-        category: controls.category.value,
-        note: document.querySelector("#note").value.trim()
-      },
-      photos
+    const meta = {
+      date: controls.date.value,
+      floor: controls.floor.value + "F",
+      area: controls.area.value.trim(),
+      trade: controls.trade.value,
+      category: controls.category.value,
+      note: document.querySelector("#note").value.trim()
     };
-    const result = await PhotoApi.uploadPhotos(payload);
-    setMessage(`上傳完成：已建立 ${result.records.length} 筆照片紀錄。`, "ok");
+
+    for (const file of files) {
+      setMessage("正在壓縮並上傳第 " + (uploaded + 1) + " / " + files.length + " 張...", "");
+      const photo = await compressPhoto(file);
+      await PhotoApi.uploadPhotos({ meta, photos: [photo] });
+      uploaded += 1;
+    }
+
+    setMessage("上傳完成：已建立 " + uploaded + " 筆照片紀錄。", "ok");
     photoInput.value = "";
     updatePreview();
   } catch (error) {
-    setMessage(error.message, "error");
+    const progress = uploaded ? "已成功上傳 " + uploaded + " 張；" : "";
+    setMessage(progress + error.message, "error");
   } finally {
     uploadButton.disabled = false;
   }
 });
 
-function fileToPayload(file) {
+function compressPhoto(file) {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve({
-      name: file.name,
-      mimeType: file.type || "image/jpeg",
-      dataUrl: reader.result
-    });
-    reader.onerror = () => reject(new Error(`讀取照片失敗：${file.name}`));
-    reader.readAsDataURL(file);
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const { maxDimension, jpegQuality } = window.APP_CONFIG.image;
+      const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(image.naturalWidth * scale);
+      canvas.height = Math.round(image.naturalHeight * scale);
+      const context = canvas.getContext("2d");
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error("壓縮照片失敗：" + file.name));
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => resolve({
+          name: file.name.replace(/\.[^.]+$/, ".jpg"),
+          mimeType: "image/jpeg",
+          dataUrl: reader.result
+        });
+        reader.onerror = () => reject(new Error("讀取照片失敗：" + file.name));
+        reader.readAsDataURL(blob);
+      }, "image/jpeg", jpegQuality);
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("無法開啟照片：" + file.name));
+    };
+    image.src = objectUrl;
   });
 }
 
 function setMessage(text, type) {
   message.textContent = text;
-  message.className = `message ${type}`.trim();
+  message.className = "message " + type;
 }

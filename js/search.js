@@ -11,9 +11,7 @@ const fields = {
 initSearch();
 
 function initSearch() {
-  const { floors, areas, trades, categories } = window.APP_CONFIG.options;
-  fillSelect(fields.floor, floors, true);
-  fillSelect(fields.area, areas, true);
+  const { trades, categories } = window.APP_CONFIG.options;
   fillSelect(fields.trade, trades, true);
   fillSelect(fields.category, categories, true);
   document.querySelector("#dateTo").value = todayValue();
@@ -26,6 +24,8 @@ form.addEventListener("submit", async (event) => {
 
   try {
     const filters = Object.fromEntries(new FormData(form).entries());
+    if (filters.floor) filters.floor += "F";
+    filters.area = filters.area.trim();
     const data = await PhotoApi.searchPhotos(filters);
     renderResults(data.records || []);
   } catch (error) {
