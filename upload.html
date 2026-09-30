@@ -25,11 +25,14 @@
       <div class="field-grid">
         <label>
           樓層
-          <select id="floor" name="floor" required></select>
+          <span class="input-suffix">
+            <input id="floor" name="floor" type="number" inputmode="numeric" min="1" max="25" step="1" placeholder="5" required>
+            <span>F</span>
+          </span>
         </label>
         <label>
           區域
-          <select id="area" name="area" required></select>
+          <input id="area" name="area" type="text" maxlength="30" placeholder="例如：A區" required>
         </label>
         <label>
           工項
