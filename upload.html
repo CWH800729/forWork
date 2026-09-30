@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>施工照片上傳</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="app-header compact">
+    <a class="back-link" href="index.html">首頁</a>
+    <div>
+      <p class="eyebrow">Upload</p>
+      <h1>施工照片上傳</h1>
+    </div>
+  </header>
+
+  <main>
+    <form id="uploadForm" class="form-panel">
+      <label>
+        日期
+        <input id="photoDate" name="date" type="date" required>
+      </label>
+
+      <div class="field-grid">
+        <label>
+          樓層
+          <select id="floor" name="floor" required></select>
+        </label>
+        <label>
+          區域
+          <select id="area" name="area" required></select>
+        </label>
+        <label>
+          工項
+          <select id="trade" name="trade" required></select>
+        </label>
+        <label>
+          分類
+          <select id="category" name="category" required></select>
+        </label>
+      </div>
+
+      <label>
+        備註
+        <textarea id="note" name="note" rows="3" placeholder="例如：C3柱柱接頭"></textarea>
+      </label>
+
+      <label class="file-picker">
+        <span>拍照 / 選擇照片</span>
+        <input id="photos" name="photos" type="file" accept="image/*" multiple required>
+      </label>
+
+      <div class="selected-row">
+        <span id="selectedCount">尚未選擇照片</span>
+        <button id="clearPhotos" class="text-button" type="button">清除</button>
+      </div>
+
+      <div id="previewGrid" class="preview-grid" aria-live="polite"></div>
+
+      <button id="uploadButton" class="submit-button" type="submit">上傳照片</button>
+      <p id="uploadMessage" class="message" role="status"></p>
+    </form>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/upload.js"></script>
+</body>
+</html>

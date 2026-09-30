@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>照片查詢</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="app-header compact">
+    <a class="back-link" href="index.html">首頁</a>
+    <div>
+      <p class="eyebrow">Search</p>
+      <h1>照片查詢</h1>
+    </div>
+  </header>
+
+  <main>
+    <form id="searchForm" class="form-panel">
+      <div class="field-grid">
+        <label>
+          起始日期
+          <input id="dateFrom" name="dateFrom" type="date">
+        </label>
+        <label>
+          結束日期
+          <input id="dateTo" name="dateTo" type="date">
+        </label>
+        <label>
+          樓層
+          <select id="floor" name="floor"></select>
+        </label>
+        <label>
+          區域
+          <select id="area" name="area"></select>
+        </label>
+        <label>
+          工項
+          <select id="trade" name="trade"></select>
+        </label>
+        <label>
+          分類
+          <select id="category" name="category"></select>
+        </label>
+      </div>
+
+      <label>
+        關鍵字
+        <input id="keyword" name="keyword" type="search" placeholder="柱接頭、檔名、備註">
+      </label>
+
+      <button class="submit-button" type="submit">搜尋</button>
+      <p id="searchMessage" class="message" role="status"></p>
+    </form>
+
+    <section id="results" class="results-grid" aria-live="polite"></section>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/search.js"></script>
+</body>
+</html>
