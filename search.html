@@ -28,11 +28,14 @@
         </label>
         <label>
           樓層
-          <select id="floor" name="floor"></select>
+          <span class="input-suffix">
+            <input id="floor" name="floor" type="number" inputmode="numeric" min="1" max="25" step="1" placeholder="全部">
+            <span>F</span>
+          </span>
         </label>
         <label>
           區域
-          <select id="area" name="area"></select>
+          <input id="area" name="area" type="text" maxlength="30" placeholder="全部">
         </label>
         <label>
           工項
