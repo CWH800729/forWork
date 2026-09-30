@@ -178,6 +178,27 @@ textarea {
   font: inherit;
 }
 
+.input-suffix {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  align-items: stretch;
+}
+
+.input-suffix input {
+  border-radius: 6px 0 0 6px;
+}
+
+.input-suffix > span {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-left: 0;
+  border-radius: 0 6px 6px 0;
+  background: #eef3f1;
+  color: var(--muted);
+  font-weight: 700;
+}
+
 textarea {
   resize: vertical;
 }
