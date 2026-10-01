@@ -13,6 +13,7 @@ const uploadButton = document.querySelector("#uploadButton");
 const clearButton = document.querySelector("#clearPhotos");
 const floorTypeInputs = [...document.querySelectorAll('input[name="floorType"]')];
 const customTradeButton = document.querySelector("#toggleCustomTrade");
+const deleteCustomTradeButton = document.querySelector("#deleteCustomTrade");
 const areaSuggestions = document.querySelector("#personalAreas");
 
 const controls = {
@@ -37,15 +38,20 @@ function init() {
   restoreDefaults();
   applyQueryDefaults();
   updatePreview();
+  updateDeleteTradeButton();
 
   ["floor", "area", "trade", "category"].forEach((key) => {
     const eventName = key === "floor" || key === "area" ? "input" : "change";
-    controls[key].addEventListener(eventName, saveDefaults);
+    controls[key].addEventListener(eventName, () => {
+      saveDefaults();
+      if (key === "trade") updateDeleteTradeButton();
+    });
   });
   floorTypeInputs.forEach((input) => input.addEventListener("change", saveDefaults));
   customTradeButton.addEventListener("click", () => {
     setCustomTradeMode(!controls.trade.disabled);
   });
+  deleteCustomTradeButton.addEventListener("click", deleteSelectedCustomTrade);
 }
 
 function applyQueryDefaults() {
@@ -202,6 +208,7 @@ function formatFloor(value, type) {
 }
 
 function setCustomTradeMode(enabled) {
+  if (enabled) controls.trade.value = "其他";
   controls.trade.disabled = enabled;
   controls.trade.required = !enabled;
   controls.customTrade.hidden = !enabled;
@@ -209,6 +216,7 @@ function setCustomTradeMode(enabled) {
   controls.customTrade.required = enabled;
   customTradeButton.textContent = enabled ? "返回選單" : "自訂";
   customTradeButton.setAttribute("aria-pressed", String(enabled));
+  updateDeleteTradeButton();
   if (enabled) controls.customTrade.focus();
 }
 
@@ -244,6 +252,35 @@ function appendTradeOption(trade) {
   if (!value) return;
   const exists = [...controls.trade.options].some((option) => option.value === value);
   if (!exists) controls.trade.append(new Option(value, value));
+}
+
+function deleteSelectedCustomTrade() {
+  const value = controls.trade.value;
+  if (!isPersonalTrade(value)) return;
+  removePersonalValue(CUSTOM_TRADES_KEY, value);
+  const option = [...controls.trade.options].find((item) => item.value === value);
+  if (option) option.remove();
+  controls.trade.value = "其他";
+  saveDefaults();
+  updateDeleteTradeButton();
+}
+
+function isPersonalTrade(value) {
+  const isBuiltIn = window.APP_CONFIG.options.trades.includes(value);
+  return !isBuiltIn && loadPersonalList(CUSTOM_TRADES_KEY).includes(value);
+}
+
+function removePersonalValue(key, value) {
+  try {
+    const values = loadPersonalList(key).filter((item) => item !== value);
+    localStorage.setItem(key, JSON.stringify(values));
+  } catch {
+    // Personal history is optional.
+  }
+}
+
+function updateDeleteTradeButton() {
+  deleteCustomTradeButton.disabled = controls.trade.disabled || !isPersonalTrade(controls.trade.value);
 }
 
 function appendAreaOption(area) {

@@ -25,6 +25,15 @@
 7. 確認 `js/config.js` 的 `apiUrl` 是目前部署的 Web App URL。
 8. 將整個專案放到 GitHub repository 並啟用 GitHub Pages。
 
+## 刪除照片權限
+
+照片查詢頁的刪除功能需要管理 PIN。請在 Apps Script 的「專案設定」→「指令碼屬性」新增：
+
+- 屬性：`DELETE_PIN`
+- 值：自行設定一組不易猜測的管理密碼
+
+設定後重新部署 Apps Script 新版本。刪除時照片會移到 Google Drive 垃圾桶，Sheets 中對應的照片紀錄會被移除。
+
 ## 第一個測試目標
 
 手機開啟 GitHub Pages，選擇 `5F`、`A區`、`電銲`，一次選 5 張照片，上傳後確認：

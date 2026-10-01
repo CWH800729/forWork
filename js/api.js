@@ -24,6 +24,10 @@ const PhotoApi = {
 
   searchPhotos(filters) {
     return this.request("searchPhotos", { filters });
+  },
+
+  deletePhoto(id, fileId, deletePin) {
+    return this.request("deletePhoto", { id, fileId, deletePin });
   }
 };
 

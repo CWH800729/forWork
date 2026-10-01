@@ -246,7 +246,7 @@ textarea {
 
 .custom-field-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 8px;
 }
 
@@ -265,6 +265,25 @@ textarea {
 .custom-toggle-button[aria-pressed="true"] {
   color: #fff;
   background: var(--accent);
+}
+
+.delete-personal-button {
+  min-width: 58px;
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  padding: 0 10px;
+  color: var(--danger);
+  background: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.delete-personal-button:disabled {
+  border-color: var(--line);
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 textarea {
@@ -381,6 +400,22 @@ textarea {
 .results-table a {
   color: var(--accent-dark);
   font-weight: 800;
+}
+
+.delete-row-button {
+  border: 1px solid var(--danger);
+  border-radius: 5px;
+  padding: 6px 10px;
+  color: var(--danger);
+  background: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.delete-row-button:disabled {
+  cursor: wait;
+  opacity: 0.55;
 }
 
 .message {

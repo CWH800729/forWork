@@ -10,6 +10,7 @@ const fields = {
 };
 
 let allRecords = [];
+let visibleRecords = [];
 let recordsLoaded = false;
 
 initSearch();
@@ -93,6 +94,7 @@ function normalizeText(value) {
 }
 
 function renderResults(records, isFiltered) {
+  visibleRecords = [...records];
   results.replaceChildren();
   if (!records.length) {
     setMessage(
@@ -129,6 +131,7 @@ function renderResults(records, isFiltered) {
 
     appendLinkCell(row, record.driveUrl, "開啟照片");
     appendLinkCell(row, record.folderUrl, "開啟資料夾");
+    appendDeleteCell(row, record);
     body.append(row);
   });
 
@@ -140,7 +143,7 @@ function renderResults(records, isFiltered) {
 function createHeader() {
   const head = document.createElement("thead");
   const row = document.createElement("tr");
-  ["序號", "日期", "樓層", "區域", "工項", "分類", "備註", "檔名", "照片連結", "日期資料夾"].forEach((label) => {
+  ["序號", "日期", "樓層", "區域", "工項", "分類", "備註", "檔名", "照片連結", "日期資料夾", "操作"].forEach((label) => {
     const cell = document.createElement("th");
     cell.scope = "col";
     cell.textContent = label;
@@ -169,6 +172,45 @@ function appendLinkCell(row, url, label) {
     cell.textContent = "無連結";
   }
   row.append(cell);
+}
+
+function appendDeleteCell(row, record) {
+  const cell = document.createElement("td");
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "delete-row-button";
+  button.textContent = "刪除";
+  button.addEventListener("click", () => deleteRecord(record, button));
+  cell.append(button);
+  row.append(cell);
+}
+
+async function deleteRecord(record, button) {
+  const confirmed = window.confirm(
+    "確定刪除「" + (record.fileName || "這張照片") + "」？\n照片會移到 Google Drive 垃圾桶。"
+  );
+  if (!confirmed) return;
+
+  let deletePin = sessionStorage.getItem("photoDeletePin") || "";
+  if (!deletePin) {
+    deletePin = window.prompt("請輸入管理員刪除 PIN：") || "";
+  }
+  if (!deletePin) return;
+
+  button.disabled = true;
+  setMessage("正在刪除照片...", "");
+  try {
+    await PhotoApi.deletePhoto(record.id, record.fileId, deletePin);
+    sessionStorage.setItem("photoDeletePin", deletePin);
+    allRecords = allRecords.filter((item) => item.id !== record.id);
+    const remaining = visibleRecords.filter((item) => item.id !== record.id);
+    renderResults(remaining, true);
+    setMessage("照片與該筆紀錄已刪除。", "ok");
+  } catch (error) {
+    sessionStorage.removeItem("photoDeletePin");
+    button.disabled = false;
+    setMessage(error.message, "error");
+  }
 }
 
 function setMessage(text, type) {

@@ -33,6 +33,9 @@ function doPost(e) {
     if (body.action === 'searchPhotos') {
       return jsonOutput(searchPhotos(body.filters || {}));
     }
+    if (body.action === 'deletePhoto') {
+      return jsonOutput(deletePhoto(body.id, body.fileId, body.deletePin));
+    }
     throw new Error('Unknown action');
   } catch (error) {
     return jsonOutput({ ok: false, error: error.message });
@@ -93,6 +96,36 @@ function searchPhotos(filters) {
   const values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
   const records = values.map(rowToRecord).filter((record) => matchesFilters(record, filters));
   return { ok: true, records };
+}
+
+function deletePhoto(id, fileId, deletePin) {
+  const expectedPin = PropertiesService.getScriptProperties().getProperty('DELETE_PIN');
+  if (!expectedPin) {
+    throw new Error('尚未設定刪除 PIN');
+  }
+  if (!deletePin || String(deletePin) !== expectedPin) {
+    throw new Error('刪除 PIN 錯誤');
+  }
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sheet = getRecordSheet();
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) throw new Error('找不到照片紀錄');
+
+    const values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
+    const recordIndex = values.findIndex((row) => (
+      String(row[0]) === String(id) && String(row[9]) === String(fileId)
+    ));
+    if (recordIndex < 0) throw new Error('找不到照片紀錄');
+
+    DriveApp.getFileById(fileId).setTrashed(true);
+    sheet.deleteRow(recordIndex + 2);
+    return { ok: true, id };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function matchesFilters(record, filters) {
