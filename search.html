@@ -26,13 +26,16 @@
           結束日期
           <input id="dateTo" name="dateTo" type="date">
         </label>
-        <label>
-          樓層
-          <span class="input-suffix">
-            <input id="floor" name="floor" type="number" inputmode="numeric" min="1" max="25" step="1" placeholder="全部">
-            <span>F</span>
-          </span>
-        </label>
+        <div class="field-group">
+          <span class="field-label">樓層／節次</span>
+          <div class="floor-control">
+            <input id="floor" name="floor" type="number" inputmode="numeric" min="1" max="25" step="1" placeholder="全部" aria-label="樓層或節次數字">
+            <div class="unit-toggle" aria-label="樓層或節次">
+              <label><input name="floorType" type="radio" value="F" checked><span>F</span></label>
+              <label><input name="floorType" type="radio" value="#"><span>#</span></label>
+            </div>
+          </div>
+        </div>
         <label>
           區域
           <input id="area" name="area" type="text" maxlength="30" placeholder="全部">

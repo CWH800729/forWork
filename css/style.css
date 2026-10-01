@@ -178,25 +178,70 @@ textarea {
   font: inherit;
 }
 
-.input-suffix {
+.field-group {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 42px;
+  gap: 7px;
+}
+
+.field-label {
+  color: #344054;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.floor-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px;
   align-items: stretch;
 }
 
-.input-suffix input {
+.floor-control > input {
   border-radius: 6px 0 0 6px;
 }
 
-.input-suffix > span {
+.unit-toggle {
   display: grid;
-  place-items: center;
+  grid-template-columns: repeat(2, 1fr);
   border: 1px solid var(--line);
   border-left: 0;
   border-radius: 0 6px 6px 0;
+  overflow: hidden;
+}
+
+.unit-toggle label {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.unit-toggle label + label {
+  border-left: 1px solid var(--line);
+}
+
+.unit-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.unit-toggle span {
+  display: grid;
+  min-height: 44px;
+  place-items: center;
   background: #eef3f1;
   color: var(--muted);
-  font-weight: 700;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.unit-toggle input:checked + span {
+  background: var(--accent);
+  color: #fff;
+}
+
+.unit-toggle input:focus-visible + span {
+  outline: 3px solid rgba(27, 122, 106, 0.25);
+  outline-offset: -3px;
 }
 
 textarea {

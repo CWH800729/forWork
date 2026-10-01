@@ -45,7 +45,9 @@ form.addEventListener("submit", (event) => {
   }
 
   const filters = Object.fromEntries(new FormData(form).entries());
-  if (filters.floor) filters.floor += "F";
+  if (filters.floor) {
+    filters.floor = filters.floorType === "#" ? "#" + filters.floor : filters.floor + "F";
+  }
   const matchedRecords = allRecords.filter((record) => matchesFilters(record, filters));
   renderResults(matchedRecords, true);
 });

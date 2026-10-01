@@ -7,6 +7,7 @@ const selectedCount = document.querySelector("#selectedCount");
 const message = document.querySelector("#uploadMessage");
 const uploadButton = document.querySelector("#uploadButton");
 const clearButton = document.querySelector("#clearPhotos");
+const floorTypeInputs = [...document.querySelectorAll('input[name="floorType"]')];
 
 const controls = {
   date: document.querySelector("#photoDate"),
@@ -32,14 +33,21 @@ function init() {
     const eventName = key === "floor" || key === "area" ? "input" : "change";
     controls[key].addEventListener(eventName, saveDefaults);
   });
+  floorTypeInputs.forEach((input) => input.addEventListener("change", saveDefaults));
 }
 
 function applyQueryDefaults() {
   const params = new URLSearchParams(location.search);
-  ["floor", "area", "trade", "category"].forEach((key) => {
+  const floor = params.get("floor");
+  if (floor) {
+    const floorType = floor.startsWith("#") ? "#" : "F";
+    controls.floor.value = floor.replace(/^#/, "").replace(/F$/i, "");
+    setFloorType(floorType);
+  }
+
+  ["area", "trade", "category"].forEach((key) => {
     let value = params.get(key);
     if (!value) return;
-    if (key === "floor") value = value.replace(/F$/i, "");
     if (key === "trade" || key === "category") {
       if (![...controls[key].options].some((option) => option.value === value)) return;
     }
@@ -49,18 +57,22 @@ function applyQueryDefaults() {
 
 function restoreDefaults() {
   const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-  Object.entries(saved).forEach(([key, value]) => {
+  ["floor", "area", "trade", "category"].forEach((key) => {
+    const value = saved[key];
+    if (value == null) return;
     if (!controls[key]) return;
     if (key === "trade" || key === "category") {
       if (![...controls[key].options].some((option) => option.value === value)) return;
     }
     controls[key].value = value;
   });
+  setFloorType(saved.floorType || "F");
 }
 
 function saveDefaults() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     floor: controls.floor.value,
+    floorType: getFloorType(),
     area: controls.area.value,
     trade: controls.trade.value,
     category: controls.category.value
@@ -106,7 +118,7 @@ form.addEventListener("submit", async (event) => {
   try {
     const meta = {
       date: controls.date.value,
-      floor: controls.floor.value + "F",
+      floor: formatFloor(controls.floor.value, getFloorType()),
       area: controls.area.value.trim(),
       trade: controls.trade.value,
       category: controls.category.value,
@@ -143,6 +155,19 @@ function chunkFiles(files, size) {
     batches.push(files.slice(index, index + size));
   }
   return batches;
+}
+
+function getFloorType() {
+  return floorTypeInputs.find((input) => input.checked)?.value || "F";
+}
+
+function setFloorType(value) {
+  const target = floorTypeInputs.find((input) => input.value === value);
+  if (target) target.checked = true;
+}
+
+function formatFloor(value, type) {
+  return type === "#" ? "#" + value : value + "F";
 }
 
 function compressPhoto(file) {
