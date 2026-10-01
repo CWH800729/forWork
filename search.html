@@ -49,14 +49,16 @@
 
       <label>
         關鍵字
-        <input id="keyword" name="keyword" type="search" placeholder="柱接頭、檔名、備註">
+        <input id="keyword" name="keyword" type="search" placeholder="樓層、區域、工項、檔名或備註">
       </label>
 
       <button class="submit-button" type="submit">搜尋</button>
       <p id="searchMessage" class="message" role="status"></p>
     </form>
 
-    <section id="results" class="results-grid" aria-live="polite"></section>
+    <section class="search-results" aria-live="polite">
+      <div id="results"></div>
+    </section>
   </main>
 
   <script src="js/config.js"></script>

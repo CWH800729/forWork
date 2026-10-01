@@ -1,4 +1,5 @@
 const STORAGE_KEY = "constructionPhotoUploadDefaults";
+const UPLOAD_BATCH_SIZE = 5;
 const form = document.querySelector("#uploadForm");
 const photoInput = document.querySelector("#photos");
 const previewGrid = document.querySelector("#previewGrid");
@@ -112,11 +113,17 @@ form.addEventListener("submit", async (event) => {
       note: document.querySelector("#note").value.trim()
     };
 
-    for (const file of files) {
-      setMessage("正在壓縮並上傳第 " + (uploaded + 1) + " / " + files.length + " 張...", "");
-      const photo = await compressPhoto(file);
-      await PhotoApi.uploadPhotos({ meta, photos: [photo] });
-      uploaded += 1;
+    const batches = chunkFiles(files, UPLOAD_BATCH_SIZE);
+    for (let index = 0; index < batches.length; index += 1) {
+      const batch = batches[index];
+      setMessage(
+        "正在處理第 " + (index + 1) + " / " + batches.length +
+        " 批（" + batch.length + " 張）...",
+        ""
+      );
+      const photos = await Promise.all(batch.map(compressPhoto));
+      const result = await PhotoApi.uploadPhotos({ meta, photos });
+      uploaded += result.records.length;
     }
 
     setMessage("上傳完成：已建立 " + uploaded + " 筆照片紀錄。", "ok");
@@ -129,6 +136,14 @@ form.addEventListener("submit", async (event) => {
     uploadButton.disabled = false;
   }
 });
+
+function chunkFiles(files, size) {
+  const batches = [];
+  for (let index = 0; index < files.length; index += size) {
+    batches.push(files.slice(index, index + size));
+  }
+  return batches;
+}
 
 function compressPhoto(file) {
   return new Promise((resolve, reject) => {

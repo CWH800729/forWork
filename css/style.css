@@ -262,6 +262,59 @@ textarea {
   font-weight: 800;
 }
 
+.search-results {
+  margin-top: 18px;
+}
+
+.table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.results-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.results-table th,
+.results-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.results-table th {
+  position: sticky;
+  top: 0;
+  background: #eef3f1;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.results-table td:nth-child(7) {
+  min-width: 180px;
+  white-space: normal;
+}
+
+.results-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.results-table tbody tr:nth-child(even) {
+  background: #f8faf9;
+}
+
+.results-table a {
+  color: var(--accent-dark);
+  font-weight: 800;
+}
+
 .message {
   min-height: 22px;
   margin: 0;

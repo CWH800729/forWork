@@ -16,7 +16,8 @@ const HEADERS = [
   '檔名',
   'Drive URL',
   'File ID',
-  '上傳時間'
+  '上傳時間',
+  '資料夾 URL'
 ];
 
 function doGet() {
@@ -46,6 +47,7 @@ function uploadPhotos(meta, photos) {
   const sheet = getRecordSheet();
   const folder = getPhotoFolder(meta);
   const uploadTime = Utilities.formatDate(new Date(), SETTINGS.timezone, 'yyyy/MM/dd HH:mm:ss');
+  const folderUrl = folder.getUrl();
   const dateKey = String(meta.date).replaceAll('-', '');
   const nextSerial = getNextSerial(sheet, meta);
   const rows = [];
@@ -53,7 +55,7 @@ function uploadPhotos(meta, photos) {
 
   photos.forEach((photo, index) => {
     const serial = String(nextSerial + index).padStart(3, '0');
-    const fileName = `${dateKey}_${meta.floor}_${meta.area}_${meta.trade}_${serial}.jpg`;
+    const fileName = `${dateKey}_${meta.floor}_${meta.area}_${meta.trade}_${meta.category}_${serial}.jpg`;
     const blob = dataUrlToBlob(photo.dataUrl, photo.mimeType).setName(fileName);
     const file = folder.createFile(blob);
     const id = Utilities.getUuid();
@@ -70,7 +72,8 @@ function uploadPhotos(meta, photos) {
       fileName,
       driveUrl,
       file.getId(),
-      uploadTime
+      uploadTime,
+      folderUrl
     ];
     rows.push(row);
     records.push(rowToRecord(row));
@@ -93,19 +96,53 @@ function searchPhotos(filters) {
 }
 
 function matchesFilters(record, filters) {
-  const keyword = String(filters.keyword || '').trim().toLowerCase();
-  const date = String(record.date || '');
+  const keyword = normalizeSearchText(filters.keyword);
+  const date = normalizeDate(record.date);
   if (filters.dateFrom && date < filters.dateFrom) return false;
   if (filters.dateTo && date > filters.dateTo) return false;
-  if (filters.floor && record.floor !== filters.floor) return false;
-  if (filters.area && record.area !== filters.area) return false;
-  if (filters.trade && record.trade !== filters.trade) return false;
-  if (filters.category && record.category !== filters.category) return false;
+  if (!floorMatch(record.floor, filters.floor)) return false;
+  if (!fuzzyMatch(record.area, filters.area)) return false;
+  if (!fuzzyMatch(record.trade, filters.trade)) return false;
+  if (!fuzzyMatch(record.category, filters.category)) return false;
   if (keyword) {
-    const haystack = [record.note, record.fileName, record.area, record.trade, record.category].join(' ').toLowerCase();
+    const haystack = normalizeSearchText([
+      record.date,
+      record.floor,
+      record.area,
+      record.trade,
+      record.category,
+      record.note,
+      record.fileName
+    ].join(' '));
     if (!haystack.includes(keyword)) return false;
   }
   return true;
+}
+
+function fuzzyMatch(value, filter) {
+  const needle = normalizeSearchText(filter);
+  return !needle || normalizeSearchText(value).includes(needle);
+}
+
+function floorMatch(value, filter) {
+  const needle = normalizeSearchText(filter).replace(/f$/, '');
+  const floor = normalizeSearchText(value).replace(/f$/, '');
+  return !needle || floor === needle;
+}
+
+function normalizeSearchText(value) {
+  return String(value || '').trim().toLowerCase().replace(/\s+/g, '');
+}
+
+function normalizeDate(value) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return Utilities.formatDate(value, SETTINGS.timezone, 'yyyy-MM-dd');
+  }
+
+  const text = String(value || '').trim();
+  const compact = text.match(/^(\d{4})[\/-]?(\d{1,2})[\/-]?(\d{1,2})$/);
+  if (!compact) return text;
+  return compact[1] + '-' + compact[2].padStart(2, '0') + '-' + compact[3].padStart(2, '0');
 }
 
 function getRecordSheet() {
@@ -114,9 +151,7 @@ function getRecordSheet() {
   if (!sheet) {
     sheet = ss.insertSheet(SETTINGS.sheetName);
   }
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow(HEADERS);
-  }
+  sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
   return sheet;
 }
 
@@ -124,14 +159,12 @@ function getPhotoFolder(meta) {
   const date = new Date(`${meta.date}T00:00:00`);
   const year = Utilities.formatDate(date, SETTINGS.timezone, 'yyyy');
   const month = Utilities.formatDate(date, SETTINGS.timezone, 'MM');
-  const day = Utilities.formatDate(date, SETTINGS.timezone, 'yyyy-MM-dd');
+  const day = Utilities.formatDate(date, SETTINGS.timezone, 'yyyyMMdd');
   return ensureFolderPath([
     SETTINGS.rootFolderName,
     year,
     month,
-    day,
-    meta.area,
-    meta.trade
+    day
   ]);
 }
 
@@ -158,7 +191,7 @@ function getNextSerial(sheet, meta) {
   if (lastRow < 2) return 1;
 
   const dateKey = String(meta.date).replaceAll('-', '');
-  const prefix = `${dateKey}_${meta.floor}_${meta.area}_${meta.trade}_`;
+  const prefix = `${dateKey}_${meta.floor}_${meta.area}_${meta.trade}_${meta.category}_`;
   const fileNames = sheet.getRange(2, 8, lastRow - 1, 1).getValues().flat();
   const maxSerial = fileNames.reduce((max, name) => {
     if (String(name).startsWith(prefix)) {
@@ -179,7 +212,7 @@ function dataUrlToBlob(dataUrl, mimeType) {
 function rowToRecord(row) {
   return {
     id: row[0],
-    date: row[1],
+    date: normalizeDate(row[1]),
     floor: row[2],
     area: row[3],
     trade: row[4],
@@ -189,6 +222,7 @@ function rowToRecord(row) {
     driveUrl: row[8],
     fileId: row[9],
     uploadedAt: row[10],
+    folderUrl: row[11] || '',
     thumbnailUrl: row[9] ? `https://drive.google.com/thumbnail?id=${row[9]}&sz=w400` : ''
   };
 }
