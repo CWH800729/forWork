@@ -1,4 +1,8 @@
 const STORAGE_KEY = "constructionPhotoUploadDefaults";
+const CUSTOM_TRADES_KEY = "constructionPhotoCustomTrades";
+const CUSTOM_AREAS_KEY = "constructionPhotoCustomAreas";
+const MAX_CUSTOM_TRADES = 30;
+const MAX_CUSTOM_AREAS = 30;
 const UPLOAD_BATCH_SIZE = 5;
 const form = document.querySelector("#uploadForm");
 const photoInput = document.querySelector("#photos");
@@ -8,12 +12,15 @@ const message = document.querySelector("#uploadMessage");
 const uploadButton = document.querySelector("#uploadButton");
 const clearButton = document.querySelector("#clearPhotos");
 const floorTypeInputs = [...document.querySelectorAll('input[name="floorType"]')];
+const customTradeButton = document.querySelector("#toggleCustomTrade");
+const areaSuggestions = document.querySelector("#personalAreas");
 
 const controls = {
   date: document.querySelector("#photoDate"),
   floor: document.querySelector("#floor"),
   area: document.querySelector("#area"),
   trade: document.querySelector("#trade"),
+  customTrade: document.querySelector("#customTrade"),
   category: document.querySelector("#category")
 };
 
@@ -22,6 +29,8 @@ init();
 function init() {
   const { trades, categories } = window.APP_CONFIG.options;
   fillSelect(controls.trade, trades);
+  loadPersonalList(CUSTOM_TRADES_KEY).forEach((trade) => appendTradeOption(trade));
+  loadPersonalList(CUSTOM_AREAS_KEY).forEach((area) => appendAreaOption(area));
   fillSelect(controls.category, categories);
 
   controls.date.value = todayValue();
@@ -34,6 +43,9 @@ function init() {
     controls[key].addEventListener(eventName, saveDefaults);
   });
   floorTypeInputs.forEach((input) => input.addEventListener("change", saveDefaults));
+  customTradeButton.addEventListener("click", () => {
+    setCustomTradeMode(!controls.trade.disabled);
+  });
 }
 
 function applyQueryDefaults() {
@@ -49,7 +61,13 @@ function applyQueryDefaults() {
     let value = params.get(key);
     if (!value) return;
     if (key === "trade" || key === "category") {
-      if (![...controls[key].options].some((option) => option.value === value)) return;
+      const hasOption = [...controls[key].options].some((option) => option.value === value);
+      if (!hasOption && key === "trade") {
+        controls.customTrade.value = value;
+        setCustomTradeMode(true);
+        return;
+      }
+      if (!hasOption) return;
     }
     controls[key].value = value;
   });
@@ -116,11 +134,14 @@ form.addEventListener("submit", async (event) => {
 
   let uploaded = 0;
   try {
+    const usedCustomTrade = controls.trade.disabled;
+    const selectedTrade = getTradeValue();
+    const selectedArea = controls.area.value.trim();
     const meta = {
       date: controls.date.value,
       floor: formatFloor(controls.floor.value, getFloorType()),
-      area: controls.area.value.trim(),
-      trade: controls.trade.value,
+      area: selectedArea,
+      trade: selectedTrade,
       category: controls.category.value,
       note: document.querySelector("#note").value.trim()
     };
@@ -139,6 +160,16 @@ form.addEventListener("submit", async (event) => {
     }
 
     setMessage("上傳完成：已建立 " + uploaded + " 筆照片紀錄。", "ok");
+    rememberPersonalValue(CUSTOM_AREAS_KEY, selectedArea, MAX_CUSTOM_AREAS);
+    appendAreaOption(selectedArea);
+    if (usedCustomTrade) {
+      rememberPersonalValue(CUSTOM_TRADES_KEY, selectedTrade, MAX_CUSTOM_TRADES);
+      appendTradeOption(selectedTrade);
+      controls.trade.value = selectedTrade;
+      controls.customTrade.value = "";
+      setCustomTradeMode(false);
+      saveDefaults();
+    }
     photoInput.value = "";
     updatePreview();
   } catch (error) {
@@ -168,6 +199,58 @@ function setFloorType(value) {
 
 function formatFloor(value, type) {
   return type === "#" ? "#" + value : value + "F";
+}
+
+function setCustomTradeMode(enabled) {
+  controls.trade.disabled = enabled;
+  controls.trade.required = !enabled;
+  controls.customTrade.hidden = !enabled;
+  controls.customTrade.disabled = !enabled;
+  controls.customTrade.required = enabled;
+  customTradeButton.textContent = enabled ? "返回選單" : "自訂";
+  customTradeButton.setAttribute("aria-pressed", String(enabled));
+  if (enabled) controls.customTrade.focus();
+}
+
+function getTradeValue() {
+  return controls.trade.disabled
+    ? controls.customTrade.value.trim()
+    : controls.trade.value;
+}
+
+function loadPersonalList(key) {
+  try {
+    const values = JSON.parse(localStorage.getItem(key) || "[]");
+    return Array.isArray(values) ? values.filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberPersonalValue(key, item, limit) {
+  const value = String(item || "").trim();
+  if (!value) return;
+  try {
+    const values = loadPersonalList(key).filter((savedValue) => savedValue !== value);
+    values.unshift(value);
+    localStorage.setItem(key, JSON.stringify(values.slice(0, limit)));
+  } catch {
+    // Personal history is optional and must not affect a successful upload.
+  }
+}
+
+function appendTradeOption(trade) {
+  const value = String(trade || "").trim();
+  if (!value) return;
+  const exists = [...controls.trade.options].some((option) => option.value === value);
+  if (!exists) controls.trade.append(new Option(value, value));
+}
+
+function appendAreaOption(area) {
+  const value = String(area || "").trim();
+  if (!value) return;
+  const exists = [...areaSuggestions.options].some((option) => option.value === value);
+  if (!exists) areaSuggestions.append(new Option(value, value));
 }
 
 function compressPhoto(file) {

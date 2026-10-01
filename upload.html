@@ -35,12 +35,17 @@
         </div>
         <label>
           區域
-          <input id="area" name="area" type="text" maxlength="30" placeholder="例如：A區" required>
+          <input id="area" name="area" type="text" maxlength="30" placeholder="例如：A區" list="personalAreas" required>
+          <datalist id="personalAreas"></datalist>
         </label>
-        <label>
-          工項
-          <select id="trade" name="trade" required></select>
-        </label>
+        <div class="field-group">
+          <span class="field-label">工項</span>
+          <div class="custom-field-row">
+            <select id="trade" name="trade" required></select>
+            <button id="toggleCustomTrade" class="custom-toggle-button" type="button" aria-pressed="false">自訂</button>
+          </div>
+          <input id="customTrade" type="text" maxlength="40" placeholder="輸入自訂工項" hidden disabled>
+        </div>
         <label>
           分類
           <select id="category" name="category" required></select>
