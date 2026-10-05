@@ -195,6 +195,12 @@ textarea {
   align-items: stretch;
 }
 
+.floor-mode-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
 .floor-control > input {
   border-radius: 6px 0 0 6px;
 }

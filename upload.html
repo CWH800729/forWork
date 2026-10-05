@@ -25,13 +25,17 @@
       <div class="field-grid">
         <div class="field-group">
           <span class="field-label">樓層／節次</span>
-          <div class="floor-control">
-            <input id="floor" name="floor" type="number" inputmode="numeric" min="1" max="25" step="1" placeholder="5" aria-label="樓層或節次數字" required>
-            <div class="unit-toggle" aria-label="樓層或節次">
-              <label><input name="floorType" type="radio" value="F" checked><span>F</span></label>
-              <label><input name="floorType" type="radio" value="#"><span>#</span></label>
+          <div class="floor-mode-row">
+            <div class="floor-control">
+              <input id="floor" name="floor" type="number" inputmode="numeric" min="1" max="25" step="1" placeholder="5" aria-label="樓層或節次數字" required>
+              <div class="unit-toggle" aria-label="樓層或節次">
+                <label><input name="floorType" type="radio" value="F" checked><span>F</span></label>
+                <label><input name="floorType" type="radio" value="#"><span>#</span></label>
+              </div>
             </div>
+            <button id="toggleCustomFloor" class="custom-toggle-button" type="button" aria-pressed="false">自訂</button>
           </div>
+          <input id="customFloor" type="text" maxlength="20" placeholder="例如：地下樓層、筏基層、2MF夾層" hidden disabled>
         </div>
         <label>
           區域
@@ -47,10 +51,15 @@
           </div>
           <input id="customTrade" type="text" maxlength="40" placeholder="輸入自訂工項" hidden disabled>
         </div>
-        <label>
-          分類
-          <select id="category" name="category" required></select>
-        </label>
+        <div class="field-group">
+          <span class="field-label">分類</span>
+          <div class="custom-field-row">
+            <select id="category" name="category" required></select>
+            <button id="toggleCustomCategory" class="custom-toggle-button" type="button" aria-pressed="false">自訂</button>
+            <button id="deleteCustomCategory" class="delete-personal-button" type="button" title="刪除選取的個人分類" disabled>刪除</button>
+          </div>
+          <input id="customCategory" type="text" maxlength="30" placeholder="輸入自訂分類" hidden disabled>
+        </div>
       </div>
 
       <label>
