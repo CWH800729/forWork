@@ -51,7 +51,53 @@ form.addEventListener("submit", (event) => {
   }
   const matchedRecords = allRecords.filter((record) => matchesFilters(record, filters));
   renderResults(matchedRecords, true);
+  if (matchedRecords.length) openGallery(matchedRecords);
 });
+
+function openGallery(records) {
+  cleanupGalleryPayloads();
+  const key = "photoGalleryResult-" + createGalleryId();
+  try {
+    localStorage.setItem(key, JSON.stringify({
+      createdAt: Date.now(),
+      records
+    }));
+  } catch {
+    setMessage("找到照片，但瀏覽器無法建立縮圖視窗資料。", "error");
+    return;
+  }
+
+  const galleryWindow = window.open(
+    "gallery.html?key=" + encodeURIComponent(key),
+    "_blank"
+  );
+  if (!galleryWindow) {
+    setMessage("找到 " + records.length + " 張照片，但瀏覽器阻擋了縮圖視窗。", "error");
+  }
+}
+
+function createGalleryId() {
+  if (window.crypto && typeof window.crypto.randomUUID === "function") {
+    return window.crypto.randomUUID();
+  }
+  return Date.now() + "-" + Math.random().toString(36).slice(2);
+}
+
+function cleanupGalleryPayloads() {
+  const oneHourAgo = Date.now() - 60 * 60 * 1000;
+  for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+    const key = localStorage.key(index);
+    if (!key || !key.startsWith("photoGalleryResult-")) continue;
+    try {
+      const payload = JSON.parse(localStorage.getItem(key) || "{}");
+      if (!payload.createdAt || payload.createdAt < oneHourAgo) {
+        localStorage.removeItem(key);
+      }
+    } catch {
+      localStorage.removeItem(key);
+    }
+  }
+}
 
 function matchesFilters(record, filters) {
   const date = String(record.date || "");
