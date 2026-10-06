@@ -2,9 +2,11 @@ const STORAGE_KEY = "constructionPhotoUploadDefaults";
 const CUSTOM_TRADES_KEY = "constructionPhotoCustomTrades";
 const CUSTOM_AREAS_KEY = "constructionPhotoCustomAreas";
 const CUSTOM_CATEGORIES_KEY = "constructionPhotoCustomCategories";
+const SAVED_COMBINATIONS_KEY = "constructionPhotoSavedCombinations";
 const MAX_CUSTOM_TRADES = 30;
 const MAX_CUSTOM_AREAS = 30;
 const MAX_CUSTOM_CATEGORIES = 30;
+const MAX_SAVED_COMBINATIONS = 50;
 const UPLOAD_BATCH_SIZE = 5;
 const form = document.querySelector("#uploadForm");
 const photoInput = document.querySelector("#photos");
@@ -21,6 +23,8 @@ const deleteCustomTradeButton = document.querySelector("#deleteCustomTrade");
 const customCategoryButton = document.querySelector("#toggleCustomCategory");
 const deleteCustomCategoryButton = document.querySelector("#deleteCustomCategory");
 const areaSuggestions = document.querySelector("#personalAreas");
+const savedCombinationSelect = document.querySelector("#savedCombination");
+let savedCombinations = [];
 
 const controls = {
   date: document.querySelector("#photoDate"),
@@ -42,6 +46,7 @@ function init() {
   loadPersonalList(CUSTOM_AREAS_KEY).forEach((area) => appendAreaOption(area));
   fillSelect(controls.category, categories);
   loadPersonalList(CUSTOM_CATEGORIES_KEY).forEach((category) => appendCategoryOption(category));
+  renderSavedCombinations();
 
   controls.date.value = todayValue();
   restoreDefaults();
@@ -70,21 +75,14 @@ function init() {
     setCustomCategoryMode(!controls.category.disabled);
   });
   deleteCustomCategoryButton.addEventListener("click", deleteSelectedCustomCategory);
+  savedCombinationSelect.addEventListener("change", applySavedCombination);
 }
 
 function applyQueryDefaults() {
   const params = new URLSearchParams(location.search);
   const floor = params.get("floor");
   if (floor) {
-    if (floor.startsWith("#") || /^\d+F$/i.test(floor)) {
-      const floorType = floor.startsWith("#") ? "#" : "F";
-      controls.floor.value = floor.replace(/^#/, "").replace(/F$/i, "");
-      setFloorType(floorType);
-      setCustomFloorMode(false);
-    } else {
-      controls.customFloor.value = floor;
-      setCustomFloorMode(true);
-    }
+    applyFloorValue(floor);
   }
 
   ["area", "trade", "category"].forEach((key) => {
@@ -222,6 +220,8 @@ form.addEventListener("submit", async (event) => {
       setCustomCategoryMode(false);
       saveDefaults();
     }
+    rememberCombination(meta);
+    renderSavedCombinations();
     photoInput.value = "";
     updatePreview();
   } catch (error) {
@@ -251,6 +251,19 @@ function setFloorType(value) {
 
 function formatFloor(value, type) {
   return type === "#" ? "#" + value : value + "F";
+}
+
+function applyFloorValue(value) {
+  const floor = String(value || "").trim();
+  if (floor.startsWith("#") || /^\d+F$/i.test(floor)) {
+    const floorType = floor.startsWith("#") ? "#" : "F";
+    controls.floor.value = floor.replace(/^#/, "").replace(/F$/i, "");
+    setFloorType(floorType);
+    setCustomFloorMode(false);
+  } else {
+    controls.customFloor.value = floor;
+    setCustomFloorMode(true);
+  }
 }
 
 function setCustomFloorMode(enabled) {
@@ -403,6 +416,80 @@ function appendAreaOption(area) {
   if (!value) return;
   const exists = [...areaSuggestions.options].some((option) => option.value === value);
   if (!exists) areaSuggestions.append(new Option(value, value));
+}
+
+function renderSavedCombinations() {
+  savedCombinations = loadPersonalList(SAVED_COMBINATIONS_KEY).filter((item) => (
+    item && item.floor && item.area && item.trade && item.category
+  ));
+  savedCombinationSelect.replaceChildren(new Option("選擇過往使用的組合", ""));
+  savedCombinations.forEach((combination, index) => {
+    savedCombinationSelect.append(new Option(combinationLabel(combination), String(index)));
+  });
+}
+
+function rememberCombination(meta) {
+  const combination = {
+    floor: String(meta.floor || "").trim(),
+    area: String(meta.area || "").trim(),
+    trade: String(meta.trade || "").trim(),
+    category: String(meta.category || "").trim()
+  };
+  if (Object.values(combination).some((value) => !value)) return;
+
+  try {
+    const signature = combinationSignature(combination);
+    const combinations = loadPersonalList(SAVED_COMBINATIONS_KEY)
+      .filter((item) => item && combinationSignature(item) !== signature);
+    combinations.unshift(combination);
+    localStorage.setItem(
+      SAVED_COMBINATIONS_KEY,
+      JSON.stringify(combinations.slice(0, MAX_SAVED_COMBINATIONS))
+    );
+  } catch {
+    // Saved combinations are optional.
+  }
+}
+
+function applySavedCombination() {
+  if (savedCombinationSelect.value === "") return;
+  const index = Number(savedCombinationSelect.value);
+  const combination = savedCombinations[index];
+  if (!combination) return;
+
+  applyFloorValue(combination.floor);
+  controls.area.value = combination.area;
+
+  appendTradeOption(combination.trade);
+  controls.trade.value = combination.trade;
+  setCustomTradeMode(false);
+
+  appendCategoryOption(combination.category);
+  controls.category.value = combination.category;
+  setCustomCategoryMode(false);
+
+  saveDefaults();
+  updateDeleteTradeButton();
+  updateDeleteCategoryButton();
+  savedCombinationSelect.value = "";
+}
+
+function combinationLabel(combination) {
+  return [
+    combination.floor,
+    combination.area,
+    combination.trade,
+    combination.category
+  ].join("-");
+}
+
+function combinationSignature(combination) {
+  return JSON.stringify([
+    String(combination.floor || "").trim(),
+    String(combination.area || "").trim(),
+    String(combination.trade || "").trim(),
+    String(combination.category || "").trim()
+  ]);
 }
 
 function compressPhoto(file) {
