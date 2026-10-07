@@ -5,11 +5,22 @@ const PhotoApi = {
       throw new Error("尚未設定 Apps Script Web App URL，請先編輯 js/config.js。");
     }
 
-    const response = await fetch(apiUrl, {
+    const requestOptions = {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({ action, ...payload })
-    });
+    };
+    let response;
+    try {
+      response = await fetch(apiUrl, requestOptions);
+    } catch (firstError) {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      try {
+        response = await fetch(apiUrl, requestOptions);
+      } catch {
+        throw new Error("無法連線到照片服務，請確認網路後重新整理頁面再試一次。");
+      }
+    }
 
     const data = await response.json();
     if (!response.ok || !data.ok) {
