@@ -16,10 +16,22 @@
   </header>
 
   <main class="gallery-main">
-    <p id="galleryMessage" class="gallery-message" role="status">正在載入縮圖...</p>
+    <div class="gallery-toolbar">
+      <p id="galleryMessage" class="gallery-message" role="status">正在載入縮圖...</p>
+      <div class="gallery-selection-actions desktop-only">
+        <button id="selectAllButton" class="selection-button" type="button">全選</button>
+        <button id="clearSelectionButton" class="selection-button" type="button">取消全選</button>
+        <button id="bulkDownloadButton" class="bulk-download-button" type="button" disabled>
+          打包下載
+        </button>
+      </div>
+    </div>
+    <div id="archiveLinks" class="archive-links desktop-only" aria-live="polite"></div>
     <section id="galleryGrid" class="gallery-grid" aria-live="polite"></section>
   </main>
 
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
   <script src="js/gallery.js"></script>
 </body>
 </html>

@@ -28,6 +28,10 @@ const PhotoApi = {
 
   deletePhoto(id, fileId, deletePin) {
     return this.request("deletePhoto", { id, fileId, deletePin });
+  },
+
+  createPhotoArchives(fileIds) {
+    return this.request("createPhotoArchives", { fileIds });
   }
 };
 

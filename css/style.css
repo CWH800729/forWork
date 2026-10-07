@@ -438,6 +438,79 @@ textarea {
   color: var(--danger);
 }
 
+.gallery-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.gallery-toolbar .gallery-message {
+  margin: 0;
+}
+
+.gallery-selection-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.selection-button {
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 9px 11px;
+  color: var(--text);
+  background: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.bulk-download-button {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 6px;
+  padding: 10px 16px;
+  color: #fff;
+  background: var(--accent-dark);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.bulk-download-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.archive-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.archive-download-link,
+.single-download-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--accent-dark);
+  border-radius: 5px;
+  padding: 7px 10px;
+  color: var(--accent-dark);
+  background: #fff;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.archive-download-link:hover,
+.single-download-link:hover {
+  background: #edf6f2;
+}
+
 .gallery-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
@@ -445,11 +518,37 @@ textarea {
 }
 
 .gallery-card {
+  position: relative;
   min-width: 0;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
+}
+
+.photo-selection {
+  position: absolute;
+  z-index: 1;
+  top: 8px;
+  left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 5px;
+  padding: 6px 8px;
+  color: #17211d;
+  background: rgb(255 255 255 / 92%);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 18%);
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.photo-selection-input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent-dark);
 }
 
 .gallery-image-link {
@@ -491,6 +590,11 @@ textarea {
 
 .gallery-details span {
   color: var(--muted);
+}
+
+.gallery-details .single-download-link {
+  margin-top: 4px;
+  color: var(--accent-dark);
 }
 
 .message {
@@ -544,5 +648,11 @@ textarea {
   .gallery-details {
     padding: 8px;
     font-size: 0.78rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .desktop-only {
+    display: none !important;
   }
 }

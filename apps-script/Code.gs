@@ -36,6 +36,9 @@ function doPost(e) {
     if (body.action === 'deletePhoto') {
       return jsonOutput(deletePhoto(body.id, body.fileId, body.deletePin));
     }
+    if (body.action === 'createPhotoArchives') {
+      return jsonOutput(createPhotoArchives(body.fileIds || []));
+    }
     throw new Error('Unknown action');
   } catch (error) {
     return jsonOutput({ ok: false, error: error.message });
@@ -126,6 +129,55 @@ function deletePhoto(id, fileId, deletePin) {
   } finally {
     lock.releaseLock();
   }
+}
+
+function createPhotoArchives(fileIds) {
+  const uniqueIds = [...new Set((fileIds || []).map(String).filter(Boolean))];
+  if (!uniqueIds.length) throw new Error('沒有可打包的照片');
+  if (uniqueIds.length > 100) throw new Error('一次最多打包 100 張照片');
+
+  const sheet = getRecordSheet();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) throw new Error('找不到照片紀錄');
+
+  const rows = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
+  const recordsByFileId = new Map(
+    rows.map((row) => [String(row[9]), rowToRecord(row)])
+  );
+  const records = uniqueIds.map((fileId) => {
+    const record = recordsByFileId.get(fileId);
+    if (!record) throw new Error('部分照片不在 Sheets 紀錄中');
+    return record;
+  });
+
+  const rootFolder = getOrCreateRootFolder(SETTINGS.rootFolderName);
+  const archiveFolder = getOrCreateChildFolder(rootFolder, '批次下載');
+  const dates = records.map((record) => String(record.date || '').replaceAll('-', '')).filter(Boolean).sort();
+  const dateLabel = dates.length
+    ? dates[0] + (dates[dates.length - 1] !== dates[0] ? '-' + dates[dates.length - 1] : '')
+    : Utilities.formatDate(new Date(), SETTINGS.timezone, 'yyyyMMdd');
+  const batchSize = 20;
+  const archives = [];
+
+  for (let start = 0; start < records.length; start += batchSize) {
+    const batch = records.slice(start, start + batchSize);
+    const batchNumber = Math.floor(start / batchSize) + 1;
+    const totalBatches = Math.ceil(records.length / batchSize);
+    const suffix = totalBatches > 1 ? '_第' + String(batchNumber).padStart(2, '0') + '包' : '';
+    const zipName = '施工照片_' + dateLabel + suffix + '.zip';
+    const blobs = batch.map((record) => (
+      DriveApp.getFileById(record.fileId).getBlob().setName(record.fileName)
+    ));
+    const zipFile = archiveFolder.createFile(Utilities.zip(blobs, zipName));
+    archives.push({
+      fileName: zipName,
+      count: batch.length,
+      driveUrl: zipFile.getUrl(),
+      downloadUrl: 'https://drive.google.com/uc?export=download&id=' + zipFile.getId()
+    });
+  }
+
+  return { ok: true, archives, totalPhotos: records.length };
 }
 
 function matchesFilters(record, filters) {
