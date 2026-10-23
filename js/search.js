@@ -12,6 +12,7 @@ const fields = {
 let allRecords = [];
 let visibleRecords = [];
 let recordsLoaded = false;
+const RESULTS_PER_PAGE = 50;
 
 initSearch();
 
@@ -28,7 +29,7 @@ async function loadAllRecords() {
 
   try {
     const data = await PhotoApi.searchPhotos({});
-    allRecords = data.records || [];
+    allRecords = sortRecordsNewest(data.records || []);
     recordsLoaded = true;
     renderResults(allRecords, false);
   } catch (error) {
@@ -49,7 +50,9 @@ form.addEventListener("submit", (event) => {
   if (filters.floor) {
     filters.floor = filters.floorType === "#" ? "#" + filters.floor : filters.floor + "F";
   }
-  const matchedRecords = allRecords.filter((record) => matchesFilters(record, filters));
+  const matchedRecords = sortRecordsNewest(
+    allRecords.filter((record) => matchesFilters(record, filters))
+  );
   renderResults(matchedRecords, true);
   if (matchedRecords.length) openGallery(matchedRecords);
 });
@@ -139,10 +142,10 @@ function normalizeText(value) {
   return String(value || "").trim().toLowerCase().replace(/\s+/g, "");
 }
 
-function renderResults(records, isFiltered) {
-  visibleRecords = [...records];
+function renderResults(records, isFiltered, page = 1) {
+  visibleRecords = sortRecordsNewest(records);
   results.replaceChildren();
-  if (!records.length) {
+  if (!visibleRecords.length) {
     setMessage(
       isFiltered ? "沒有符合條件的照片，可減少條件後再搜尋。" : "目前沒有照片紀錄。",
       ""
@@ -152,10 +155,15 @@ function renderResults(records, isFiltered) {
 
   setMessage(
     isFiltered
-      ? "找到 " + records.length + " 張照片。"
-      : "已載入 " + records.length + " 筆照片紀錄。",
+      ? "找到 " + visibleRecords.length + " 張照片。"
+      : "已載入 " + visibleRecords.length + " 筆照片紀錄。",
     "ok"
   );
+
+  const totalPages = Math.ceil(visibleRecords.length / RESULTS_PER_PAGE);
+  const currentPage = Math.min(Math.max(Number(page) || 1, 1), totalPages);
+  const pageStart = (currentPage - 1) * RESULTS_PER_PAGE;
+  const pageRecords = visibleRecords.slice(pageStart, pageStart + RESULTS_PER_PAGE);
 
   const wrapper = document.createElement("div");
   wrapper.className = "table-scroll";
@@ -165,10 +173,10 @@ function renderResults(records, isFiltered) {
   table.append(createHeader());
 
   const body = document.createElement("tbody");
-  records.forEach((record, index) => {
+  pageRecords.forEach((record, index) => {
     const row = document.createElement("tr");
     appendSelectionCell(row, record);
-    appendCell(row, index + 1);
+    appendCell(row, pageStart + index + 1);
     appendCell(row, record.date);
     appendCell(row, record.floor);
     appendCell(row, record.area);
@@ -186,6 +194,46 @@ function renderResults(records, isFiltered) {
   table.append(body);
   wrapper.append(table);
   results.append(wrapper);
+  if (totalPages > 1) {
+    results.append(createPagination(currentPage, totalPages, isFiltered));
+  }
+}
+
+function sortRecordsNewest(records) {
+  return [...records].sort((a, b) => {
+    const dateCompare = sortableDate(b.date).localeCompare(sortableDate(a.date));
+    if (dateCompare) return dateCompare;
+    return sortableDateTime(b.uploadedAt).localeCompare(sortableDateTime(a.uploadedAt));
+  });
+}
+
+function sortableDate(value) {
+  return String(value || "").replace(/\D/g, "").slice(0, 8).padEnd(8, "0");
+}
+
+function sortableDateTime(value) {
+  return String(value || "").replace(/\D/g, "").slice(0, 14).padEnd(14, "0");
+}
+
+function createPagination(currentPage, totalPages, isFiltered) {
+  const pagination = document.createElement("nav");
+  pagination.className = "results-pagination";
+  pagination.setAttribute("aria-label", "搜尋結果分頁");
+
+  const previous = createToolbarButton("上一頁", "pagination-button");
+  previous.disabled = currentPage === 1;
+  previous.addEventListener("click", () => renderResults(visibleRecords, isFiltered, currentPage - 1));
+
+  const status = document.createElement("span");
+  status.className = "pagination-status";
+  status.textContent = "第 " + currentPage + " / " + totalPages + " 頁";
+
+  const next = createToolbarButton("下一頁", "pagination-button");
+  next.disabled = currentPage === totalPages;
+  next.addEventListener("click", () => renderResults(visibleRecords, isFiltered, currentPage + 1));
+
+  pagination.append(previous, status, next);
+  return pagination;
 }
 
 function createHeader() {
