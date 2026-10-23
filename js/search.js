@@ -159,6 +159,7 @@ function renderResults(records, isFiltered) {
 
   const wrapper = document.createElement("div");
   wrapper.className = "table-scroll";
+  results.append(createBatchToolbar());
   const table = document.createElement("table");
   table.className = "results-table";
   table.append(createHeader());
@@ -166,6 +167,7 @@ function renderResults(records, isFiltered) {
   const body = document.createElement("tbody");
   records.forEach((record, index) => {
     const row = document.createElement("tr");
+    appendSelectionCell(row, record);
     appendCell(row, index + 1);
     appendCell(row, record.date);
     appendCell(row, record.floor);
@@ -189,7 +191,7 @@ function renderResults(records, isFiltered) {
 function createHeader() {
   const head = document.createElement("thead");
   const row = document.createElement("tr");
-  ["序號", "日期", "樓層", "區域", "工項", "分類", "備註", "檔名", "照片連結", "日期資料夾", "操作"].forEach((label) => {
+  ["選取", "序號", "日期", "樓層", "區域", "工項", "分類", "備註", "檔名", "照片連結", "日期資料夾", "操作"].forEach((label) => {
     const cell = document.createElement("th");
     cell.scope = "col";
     cell.textContent = label;
@@ -197,6 +199,118 @@ function createHeader() {
   });
   head.append(row);
   return head;
+}
+
+function createBatchToolbar() {
+  const toolbar = document.createElement("div");
+  toolbar.className = "batch-delete-toolbar";
+
+  const count = document.createElement("strong");
+  count.className = "batch-selection-count";
+  count.textContent = "已選 0 張";
+
+  const actions = document.createElement("div");
+  actions.className = "batch-delete-actions";
+  const selectAll = createToolbarButton("全選", "selection-button");
+  const clearAll = createToolbarButton("取消全選", "selection-button");
+  const deleteSelected = createToolbarButton("刪除所選（0）", "batch-delete-button");
+  deleteSelected.disabled = true;
+
+  selectAll.addEventListener("click", () => setAllResultSelections(true));
+  clearAll.addEventListener("click", () => setAllResultSelections(false));
+  deleteSelected.addEventListener("click", () => deleteSelectedRecords(deleteSelected));
+  actions.append(selectAll, clearAll, deleteSelected);
+  toolbar.append(count, actions);
+  return toolbar;
+}
+
+function createToolbarButton(text, className) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = className;
+  button.textContent = text;
+  return button;
+}
+
+function appendSelectionCell(row, record) {
+  const cell = document.createElement("td");
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  input.className = "result-selection-input";
+  input.value = record.id;
+  input.setAttribute("aria-label", "選取 " + (record.fileName || "照片"));
+  input.addEventListener("change", updateBatchSelectionState);
+  cell.append(input);
+  row.append(cell);
+}
+
+function getSelectedRecords() {
+  const selectedIds = new Set(
+    [...document.querySelectorAll(".result-selection-input:checked")].map((input) => input.value)
+  );
+  return visibleRecords.filter((record) => selectedIds.has(String(record.id)));
+}
+
+function setAllResultSelections(checked) {
+  document.querySelectorAll(".result-selection-input").forEach((input) => {
+    input.checked = checked;
+  });
+  updateBatchSelectionState();
+}
+
+function updateBatchSelectionState() {
+  const selectedCount = getSelectedRecords().length;
+  const count = document.querySelector(".batch-selection-count");
+  const button = document.querySelector(".batch-delete-button");
+  if (count) count.textContent = "已選 " + selectedCount + " 張";
+  if (button) {
+    button.textContent = "刪除所選（" + selectedCount + "）";
+    button.disabled = selectedCount === 0;
+  }
+}
+
+async function deleteSelectedRecords(button) {
+  const selectedRecords = getSelectedRecords();
+  if (!selectedRecords.length) return;
+  if (selectedRecords.length > 100) {
+    setMessage("一次最多刪除 100 張照片，請減少選取數量。", "error");
+    return;
+  }
+
+  const confirmed = window.confirm(
+    "確定批次刪除所選的 " + selectedRecords.length + " 張照片？\n照片會移到 Google Drive 垃圾桶，此操作無法在網頁中復原。"
+  );
+  if (!confirmed) return;
+
+  const deletePin = getDeletePin();
+  if (!deletePin) return;
+
+  button.disabled = true;
+  setMessage("正在批次刪除 " + selectedRecords.length + " 張照片...", "");
+  try {
+    const response = await PhotoApi.deletePhotos(
+      selectedRecords.map((record) => ({ id: record.id, fileId: record.fileId })),
+      deletePin
+    );
+    sessionStorage.setItem("photoDeletePin", deletePin);
+    const deletedIds = new Set((response.deletedIds || []).map(String));
+    allRecords = allRecords.filter((record) => !deletedIds.has(String(record.id)));
+    const remaining = visibleRecords.filter((record) => !deletedIds.has(String(record.id)));
+    renderResults(remaining, true);
+    const suffix = response.failedCount
+      ? "；另有 " + response.failedCount + " 張失敗，仍保留在列表中。"
+      : "。";
+    setMessage("已刪除 " + response.deletedCount + " 張照片" + suffix, response.failedCount ? "error" : "ok");
+  } catch (error) {
+    sessionStorage.removeItem("photoDeletePin");
+    button.disabled = false;
+    setMessage(error.message, "error");
+  }
+}
+
+function getDeletePin() {
+  const savedPin = sessionStorage.getItem("photoDeletePin") || "";
+  return savedPin || window.prompt("請輸入管理員刪除 PIN：") || "";
 }
 
 function appendCell(row, value) {
@@ -237,10 +351,7 @@ async function deleteRecord(record, button) {
   );
   if (!confirmed) return;
 
-  let deletePin = sessionStorage.getItem("photoDeletePin") || "";
-  if (!deletePin) {
-    deletePin = window.prompt("請輸入管理員刪除 PIN：") || "";
-  }
+  const deletePin = getDeletePin();
   if (!deletePin) return;
 
   button.disabled = true;

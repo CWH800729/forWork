@@ -41,6 +41,10 @@ const PhotoApi = {
     return this.request("deletePhoto", { id, fileId, deletePin });
   },
 
+  deletePhotos(records, deletePin) {
+    return this.request("deletePhotos", { records, deletePin });
+  },
+
   createPhotoArchives(fileIds) {
     return this.request("createPhotoArchives", { fileIds });
   }

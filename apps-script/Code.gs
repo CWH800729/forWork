@@ -36,6 +36,9 @@ function doPost(e) {
     if (body.action === 'deletePhoto') {
       return jsonOutput(deletePhoto(body.id, body.fileId, body.deletePin));
     }
+    if (body.action === 'deletePhotos') {
+      return jsonOutput(deletePhotos(body.records || [], body.deletePin));
+    }
     if (body.action === 'createPhotoArchives') {
       return jsonOutput(createPhotoArchives(body.fileIds || []));
     }
@@ -50,12 +53,14 @@ function uploadPhotos(meta, photos) {
     throw new Error('Missing photo data');
   }
 
+  const selectedDate = normalizeSelectedDate(meta.date);
+  const normalizedMeta = { ...meta, date: selectedDate };
   const sheet = getRecordSheet();
-  const folder = getPhotoFolder(meta);
+  const folder = getPhotoFolder(normalizedMeta);
   const uploadTime = Utilities.formatDate(new Date(), SETTINGS.timezone, 'yyyy/MM/dd HH:mm:ss');
   const folderUrl = folder.getUrl();
-  const dateKey = String(meta.date).replaceAll('-', '');
-  const nextSerial = getNextSerial(sheet, meta);
+  const dateKey = selectedDate.replaceAll('-', '');
+  const nextSerial = getNextSerial(sheet, normalizedMeta);
   const rows = [];
   const records = [];
 
@@ -69,7 +74,7 @@ function uploadPhotos(meta, photos) {
 
     const row = [
       id,
-      meta.date,
+      selectedDate,
       meta.floor,
       meta.area,
       meta.trade,
@@ -126,6 +131,63 @@ function deletePhoto(id, fileId, deletePin) {
     DriveApp.getFileById(fileId).setTrashed(true);
     sheet.deleteRow(recordIndex + 2);
     return { ok: true, id };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function deletePhotos(records, deletePin) {
+  const expectedPin = PropertiesService.getScriptProperties().getProperty('DELETE_PIN');
+  if (!expectedPin) throw new Error('尚未設定刪除 PIN');
+  if (!deletePin || String(deletePin) !== expectedPin) throw new Error('刪除 PIN 錯誤');
+
+  const requestedRecords = (records || []).map((record) => ({
+    id: String(record.id || ''),
+    fileId: String(record.fileId || '')
+  })).filter((record) => record.id && record.fileId);
+  const uniqueRecords = [...new Map(
+    requestedRecords.map((record) => [record.id + ':' + record.fileId, record])
+  ).values()];
+  if (!uniqueRecords.length) throw new Error('沒有選取要刪除的照片');
+  if (uniqueRecords.length > 100) throw new Error('一次最多刪除 100 張照片');
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sheet = getRecordSheet();
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) throw new Error('找不到照片紀錄');
+
+    const values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
+    const rowsByKey = new Map(values.map((row, index) => [
+      String(row[0]) + ':' + String(row[9]),
+      { sheetRow: index + 2, id: String(row[0]), fileId: String(row[9]) }
+    ]));
+    const targets = uniqueRecords.map((record) => rowsByKey.get(record.id + ':' + record.fileId));
+    if (targets.some((target) => !target)) throw new Error('部分照片紀錄不存在，請重新載入後再試');
+
+    const deletedTargets = [];
+    const failedNames = [];
+    targets.forEach((target) => {
+      try {
+        DriveApp.getFileById(target.fileId).setTrashed(true);
+        deletedTargets.push(target);
+      } catch (error) {
+        failedNames.push(target.id);
+      }
+    });
+
+    deletedTargets
+      .sort((a, b) => b.sheetRow - a.sheetRow)
+      .forEach((target) => sheet.deleteRow(target.sheetRow));
+
+    if (!deletedTargets.length) throw new Error('照片刪除失敗，請確認 Drive 權限');
+    return {
+      ok: true,
+      deletedIds: deletedTargets.map((target) => target.id),
+      deletedCount: deletedTargets.length,
+      failedCount: failedNames.length
+    };
   } finally {
     lock.releaseLock();
   }
@@ -241,16 +303,25 @@ function getRecordSheet() {
 }
 
 function getPhotoFolder(meta) {
-  const date = new Date(`${meta.date}T00:00:00`);
-  const year = Utilities.formatDate(date, SETTINGS.timezone, 'yyyy');
-  const month = Utilities.formatDate(date, SETTINGS.timezone, 'MM');
-  const day = Utilities.formatDate(date, SETTINGS.timezone, 'yyyyMMdd');
+  const selectedDate = normalizeSelectedDate(meta.date);
+  const dateParts = selectedDate.split('-');
+  const year = dateParts[0];
+  const month = dateParts[1];
+  const day = dateParts.join('');
   return ensureFolderPath([
     SETTINGS.rootFolderName,
     year,
     month,
     day
   ]);
+}
+
+function normalizeSelectedDate(value) {
+  const selectedDate = String(value || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) {
+    throw new Error('請選擇有效的照片日期');
+  }
+  return selectedDate;
 }
 
 function ensureFolderPath(parts) {
