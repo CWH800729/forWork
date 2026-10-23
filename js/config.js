@@ -1,5 +1,5 @@
 window.APP_CONFIG = {
-  apiUrl: "https://script.google.com/macros/s/AKfycbwLB9oMJAj4nBb_FambmJMvE2bsn6phIMaGRp5lF3z9Kj11aeVJBeBVhUFfWV9dL5_f8A/exec",
+  apiUrl: "https://script.google.com/macros/s/AKfycbws6PiOo5MpSAXYSMbdnQW4sy6OlFfk6lcZkbH80BpCyhNGk4VBpLd-tiOsBtz4Nvh1OQ/exec",
   image: {
     maxDimension: 2048,
     jpegQuality: 0.8
